@@ -43,7 +43,7 @@ int main() {
   struct sockaddr_in serv_addr, cli_addr;
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
   bzero((char *) &serv_addr, sizeof(serv_addr));
-  portno = 3334;
+  portno = 3330;
 
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port = htons(portno);
@@ -64,6 +64,9 @@ int main() {
   pipe(pipes[PARENT_READ_PIPE]);
   pipe(pipes[PARENT_WRITE_PIPE]);
 
+  int errfd[2];
+  pipe(errfd);
+
 
   pid_t procId = fork();
 
@@ -72,6 +75,8 @@ int main() {
 
     dup2(CHILD_READ_FD, STDIN_FILENO);
     dup2(CHILD_WRITE_FD, STDOUT_FILENO);
+    dup2(errfd[1], STDERR_FILENO);
+
     execv(argv[0], argv);
   } else if (procId > 0) {
     char bash_buffer[10000];
