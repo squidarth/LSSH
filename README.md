@@ -24,7 +24,8 @@ use these functions.
 
 * `gen` accepts no arguments, but returns an allocated EVP_PKEY\*, which needs to be freed later using the function EVP_PKEY_free.
 
-* `derive` is the function that given an EVP_KEY object returns the secret key. The trick here is that it takes the EVP_PKEY, along with the public key of the peer, and returns a secret.
+* `derive` is the function that given an EVP_KEY object returns the secret key. The trick here is that it takes the EVP_PKEY, along with the public key of the peer, and returns a secret. **This allocates memory**, and you should be careful to free it using
+`OPENSSL_FREE`.
 
 #### Sidenotes
 
