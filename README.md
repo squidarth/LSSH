@@ -7,6 +7,12 @@ commands on a remote computer.
 
 ### Build Steps
 
+* Building the server: `make server`
+* Running the server: `make run_server`
+* Building the client: `make client`
+
+[NOT IMPLEMENTED] Running the client: ./client HOST PORT
+
 ## Code Notes
 
 ### crypto.h
@@ -29,7 +35,7 @@ use these functions.
 
 #### Sidenotes
 
-An important note is that the function `i2d_PUBKEY` from openssl is used for extracting public keys fromt the `EVP_PKEY` objects.
+An important note is that the function `i2d_PUBKEY` from openssl is used for extracting public keys fromt the `EVP_PKEY` objects. There is example usage of this in crypto_test_2.c.
 
 ## TODO
  
