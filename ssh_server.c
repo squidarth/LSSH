@@ -35,7 +35,7 @@ void error(char *msg)
 }
 int main() {
 
-  // Netowrk stuff
+  // Network stuff
   int sockfd, newsockfd, portno, clilen, n;
 
   char sock_buffer[256];
