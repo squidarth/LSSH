@@ -16,7 +16,7 @@ int encrypt_data(unsigned char *plaintext, int plaintext_len, unsigned char *key
 int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
   unsigned char *iv, unsigned char *plaintext);
 
-EVP_PKEY * gen (void);
+EVP_PKEY * generate_key (void);
 unsigned char * derive (EVP_PKEY * self,
     const unsigned char * peer_ptr, size_t peer_len, size_t *len_ptr);
 

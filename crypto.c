@@ -85,7 +85,7 @@ int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
   return plaintext_len;
 }
 
-EVP_PKEY * gen (void) {
+EVP_PKEY * generate_key (void) {
   EVP_PKEY_CTX *pctx, *kctx;
   EVP_PKEY *params = NULL, *pkey = NULL;
 
@@ -120,8 +120,12 @@ unsigned char * derive (EVP_PKEY * self,
   EVP_PKEY_CTX *ctx; unsigned char * buf_ptr;
   if( !(ctx = EVP_PKEY_CTX_new (self, NULL)) ) err("CTX_new");
   if( 1 != EVP_PKEY_derive_init(ctx) ) err("derive_init");
+
   if( 1 != EVP_PKEY_derive_set_peer(ctx, peer) ) err("derive_peer");
+  
+
   if( 1 != EVP_PKEY_derive (ctx, NULL, len_ptr) ) err("derive1");
+
   if( !(buf_ptr = OPENSSL_malloc (*len_ptr)) ) err("malloc");
   if( 1 != EVP_PKEY_derive (ctx, buf_ptr, len_ptr) ) err("derive2");
   EVP_PKEY_CTX_free(ctx);
