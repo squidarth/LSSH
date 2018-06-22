@@ -34,9 +34,12 @@ void error(char *msg)
     perror(msg);
     exit(1);
 }
-void hex (unsigned char *p, size_t n){ while(n--) printf("%02x", *p++); }
-int main() {
-
+void hex (unsigned char *p, size_t n){
+  for (int i = 0;i<n+5;i++) {
+    printf("%02x", *p++);
+  }
+}
+int main(int argc, char *argv[]) {
   // Network stuff
   int sockfd, newsockfd, portno, n;
 
@@ -46,7 +49,7 @@ int main() {
   struct sockaddr_in serv_addr, cli_addr;
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
   bzero((char *) &serv_addr, sizeof(serv_addr));
-  portno = 3345;
+  portno =  atoi(argv[1]);
 
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port = htons(portno);
@@ -87,7 +90,8 @@ int main() {
   char writebuffer[1000];
   bzero(writebuffer, 1000);
   memcpy(writebuffer, server_public_key, 59);
-  n =  write(newsockfd, writebuffer, strlen((const char *)server_public_key));
+
+  n =  write(newsockfd, writebuffer, 59);
   if (n < 0) {
       printf("failed to write :(");
   }
@@ -95,10 +99,13 @@ int main() {
   size_t keylen;
   unsigned char * secret_key = derive (full_key, client_public_key, 59, &keylen);
 
-  printf("keylen: %lu\n", keylen);
-  printf("PRINTING SECRET KEY %s\n", secret_key);
-  printf("keylen: %lu\n", keylen);
+  printf("PRINTING SECRET KEYx\n");
+  printf("Another string\n");
   hex(secret_key, keylen);
+  printf("\n");
+
+  printf("Big char: %02x\n", secret_key[10000]);
+  printf("\n");
 
   sleep(100);
   pid_t procId = fork();

@@ -6,12 +6,20 @@
 #include <netinet/in.h>
 #include "crypto.c"
 
-void hex (unsigned char *p, size_t n){ while(n--) printf("%02x", *p++); }
-
-int main() {
+void hex (unsigned char *p, size_t n){
+  for (int i = 0;i<n;i++) {
+    printf("%02x", p[i]);
+  }
+}
+int main(int argc, char *argv[]) {
   // Generate crypto parameters
   // Create a random initialization vector
   // of the correct length
+  if (argc < 3) {
+    printf("Please provide a host and port");
+    exit(1);
+  }
+
   unsigned char iv[16];
   int randomData = open("/dev/urandom", O_RDONLY);
   if (randomData < 0) {
@@ -31,8 +39,8 @@ int main() {
 
 
   // Initiate connection to server
-  const char* hostname = "127.0.0.1"; /* localhost */
-  const char* portname = "3345";
+  const char* hostname = argv[1]; /* localhost */
+  const char* portname = argv[2];
   struct addrinfo hints;
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
@@ -67,19 +75,13 @@ int main() {
   bzero(read_buffer, 1024);
 
   // receive server public key
-  printf("Before read\n");
-  int n = read(fd, read_buffer,59);
-  printf("Read %s bytes\n", n);
+  int n = recv(fd, read_buffer,59,0);
 
-  printf("Before memcpy\n");
   memcpy(server_public_key, read_buffer, 59);
-
 
   size_t keylen;
 
-  printf("length of server key: %s\n", strlen(server_public_key));
   unsigned char * secret_key = derive (full_client_key, server_public_key, 59, &keylen);
-  printf("PRINTING SECRET KEY\n");
   hex(secret_key, keylen);
 
   // Send over initialization vector and
