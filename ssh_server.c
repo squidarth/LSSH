@@ -35,7 +35,7 @@ void error(char *msg)
     exit(1);
 }
 void hex (unsigned char *p, size_t n){
-  for (int i = 0;i<n+5;i++) {
+  for (int i = 0;i<n;i++) {
     printf("%02x", *p++);
   }
 }
@@ -107,11 +107,10 @@ int main(int argc, char *argv[]) {
   printf("Big char: %02x\n", secret_key[10000]);
   printf("\n");
 
-  sleep(100);
   pid_t procId = fork();
 
   if (procId == 0 ) {
-    char *argv[]={ "/bin/bash", " i", 0};
+    char *argv[]={ "/bin/bash", "-i", 0};
 
     dup2(CHILD_READ_FD, STDIN_FILENO);
     dup2(CHILD_WRITE_FD, STDOUT_FILENO);
@@ -143,7 +142,7 @@ int main(int argc, char *argv[]) {
       } else if (retval) {
         if(FD_ISSET(PARENT_READ_FD, &rfds)) {
             // data is available from bash
-            memset(bash_buffer,0,strlen(bash_buffer));
+            bzero(bash_buffer, 10000);
             file_listing = read(PARENT_READ_FD, bash_buffer, sizeof(bash_buffer)-1);
             printf("Read returned with %s\n", bash_buffer);
             if (file_listing >= 0) {
@@ -170,6 +169,6 @@ int main(int argc, char *argv[]) {
       }
     }
   } else {
-    printf("failed to fork a proccess :(\n");
+    printf("failed to fork a process :(\n");
   }
 }

@@ -52,7 +52,6 @@ int main(int argc, char *argv[]) {
   if (err!=0) {
       printf("failed to resolve remote socket address (err=%d)",err);
   }
-  printf("Connecting to socket\n");
   int fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
   if (fd == -1) {
       printf("%s", strerror(errno));
@@ -60,7 +59,6 @@ int main(int argc, char *argv[]) {
   if (connect(fd, res->ai_addr, res->ai_addrlen) == -1) {
       printf("%s", strerror(errno));
   }
-  printf("Connected to socket\n");
 
   unsigned char write_buffer[1024];
 
@@ -68,6 +66,8 @@ int main(int argc, char *argv[]) {
   memcpy(write_buffer, iv, 16);
 
   memcpy(&write_buffer[16], client_public_key, 59);
+  // Send over initialization vector and
+  // the client public key.
 
   write(fd, write_buffer,75);
 
@@ -82,8 +82,35 @@ int main(int argc, char *argv[]) {
   size_t keylen;
 
   unsigned char * secret_key = derive (full_client_key, server_public_key, 59, &keylen);
-  hex(secret_key, keylen);
 
-  // Send over initialization vector and
-  // the client public key.
+  printf("Welcome to the Less Secure Shell!\n");
+  printf("$ ");
+  fflush(stdout);
+  // Now that crypto handshake is over, start
+  // sending bash commands to server. 
+  fd_set rfds;
+  int retval;
+  char buffer[256];
+  while (1) {
+      FD_ZERO(&rfds);
+      FD_SET(STDIN_FILENO, &rfds);
+      FD_SET(fd, &rfds);
+      bzero(buffer, 256);
+      retval = select(fd + 1, &rfds, NULL, NULL, NULL);
+      if (retval == -1) {
+        perror("error with select");
+      } else if (retval) {
+        if(FD_ISSET(fd, &rfds)) {
+          // data available on socket
+          n  = read(fd, buffer, 255);
+          printf("%s", buffer);
+          printf("$ ");
+          fflush(stdout);
+        } else {
+          // data available on stdin
+          n = read(STDIN_FILENO, buffer, 255);
+          write(fd, buffer, 255);
+        }
+      } 
+  }
 }
