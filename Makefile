@@ -1,3 +1,4 @@
+
 server: ssh_server.c
 	gcc ssh_server.c -o server -lssl -lcrypto -L/usr/local/opt/openssl/lib -I/usr/local/opt/openssl/include\n
 
@@ -7,5 +8,4 @@ crypto_test: crypto_test_2.c
 client: ssh_client.c
 	gcc ssh_client.c -o client -lssl -lcrypto -L/usr/local/opt/openssl/lib -I/usr/local/opt/openssl/include\n
 
-run_server: server
-	./server
+all: client server
