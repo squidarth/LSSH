@@ -1,3 +1,5 @@
+#ifndef CRYPTO_INCLUDED
+#define CRYPTO_INCLUDED
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
@@ -19,6 +21,4 @@ int decrypt(unsigned char *ciphertext, int ciphertext_len, unsigned char *key,
 EVP_PKEY * generate_key (void);
 unsigned char * derive (EVP_PKEY * self,
     const unsigned char * peer_ptr, size_t peer_len, size_t *len_ptr);
-
-unsigned char * derive (EVP_PKEY * self,
-    const unsigned char * peer_ptr, size_t peer_len, size_t *len_ptr);
+#endif

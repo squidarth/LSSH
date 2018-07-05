@@ -4,7 +4,7 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include "crypto.c"
+#include "crypto.h"
 
 void hex (unsigned char *p, size_t n){
   for (int i = 0;i<n;i++) {
@@ -89,25 +89,32 @@ int main(int argc, char *argv[]) {
   fd_set rfds;
   int retval;
   char buffer[256];
+  char plainbuffer[256];
   while (1) {
       FD_ZERO(&rfds);
       FD_SET(STDIN_FILENO, &rfds);
       FD_SET(fd, &rfds);
       bzero(buffer, 256);
+      bzero(plainbuffer, 256);
       retval = select(fd + 1, &rfds, NULL, NULL, NULL);
       if (retval == -1) {
         perror("error with select");
       } else if (retval) {
         if(FD_ISSET(fd, &rfds)) {
           // data available on socket
-          n  = read(fd, buffer, 255);
-          printf("%s", buffer);
+          int cipher_length;
+          read(fd, &cipher_length, 4);
+          n  = read(fd, buffer, cipher_length);
+
+          decrypt((unsigned char *)buffer, cipher_length, secret_key, iv, (unsigned char *) plainbuffer);
+
+          printf("%s", plainbuffer);
           fflush(stdout);
         } else {
           // data available on stdin
           n = read(STDIN_FILENO, buffer, 255);
           write(fd, buffer, 255);
         }
-      } 
+      }
   }
 }
