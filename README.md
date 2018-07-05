@@ -5,15 +5,33 @@
 This is highly WIP library for a C program for executing
 commands on a remote computer.
 
+### Install Dependencies
+
+#### MacOS
+
+This is primarily being developed on MacOS, and OpenSSL
+needs to be installed in order for this to work.
+
+```
+$ brew install openssl
+```
+
+#### Debian
+
+```
+$ apt-get install openssl
+```
+
 ### Build Steps
 
+* Building everything: `make all`
 * Building the server: `make server`
-* Running the server: `make run_server`
 * Building the client: `make client`
 
-[NOT IMPLEMENTED] Running the client: ./client HOST PORT
+Running the server: ./server PORT
+Running the client: ./client HOST PORT
 
-## Code Notes
+## Implementation Notes
 
 ### crypto.h
 
@@ -35,8 +53,8 @@ use these functions.
 
 #### Sidenotes
 
-An important note is that the function `i2d_PUBKEY` from openssl is used for extracting public keys fromt the `EVP_PKEY` objects. There is example usage of this in crypto_test_2.c.
+An important note is that the function `i2d_PUBKEY` from openssl is used for extracting public keys from the `EVP_PKEY` objects. There is example usage of this in crypto_test_2.c.
 
 ## TODO
- 
+
 * Implement RSA authentication

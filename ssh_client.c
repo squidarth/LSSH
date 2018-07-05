@@ -84,10 +84,8 @@ int main(int argc, char *argv[]) {
   unsigned char * secret_key = derive (full_client_key, server_public_key, 59, &keylen);
 
   printf("Welcome to the Less Secure Shell!\n");
-  printf("$ ");
-  fflush(stdout);
   // Now that crypto handshake is over, start
-  // sending bash commands to server. 
+  // sending bash commands to server.
   fd_set rfds;
   int retval;
   char buffer[256];
@@ -104,7 +102,6 @@ int main(int argc, char *argv[]) {
           // data available on socket
           n  = read(fd, buffer, 255);
           printf("%s", buffer);
-          printf("$ ");
           fflush(stdout);
         } else {
           // data available on stdin

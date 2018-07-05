@@ -99,14 +99,6 @@ int main(int argc, char *argv[]) {
   size_t keylen;
   unsigned char * secret_key = derive (full_key, client_public_key, 59, &keylen);
 
-  printf("PRINTING SECRET KEYx\n");
-  printf("Another string\n");
-  hex(secret_key, keylen);
-  printf("\n");
-
-  printf("Big char: %02x\n", secret_key[10000]);
-  printf("\n");
-
   pid_t procId = fork();
 
   if (procId == 0 ) {
@@ -114,7 +106,7 @@ int main(int argc, char *argv[]) {
 
     dup2(CHILD_READ_FD, STDIN_FILENO);
     dup2(CHILD_WRITE_FD, STDOUT_FILENO);
-    dup2(ERROR_PIPE, STDERR_FILENO);
+    dup2(CHILD_WRITE_FD, STDERR_FILENO);
 
     execv(argv[0], argv);
   } else if (procId > 0) {
@@ -134,9 +126,7 @@ int main(int argc, char *argv[]) {
       FD_SET(PARENT_READ_FD, &rfds);
       FD_SET(newsockfd, &rfds);
 
-      printf("About to select\n");
       retval = select(highestFileDescriptor + 1, &rfds, NULL, NULL, NULL);
-      printf("Select returned\n");
       if (retval == -1) {
         perror("error with select");
       } else if (retval) {
@@ -144,24 +134,19 @@ int main(int argc, char *argv[]) {
             // data is available from bash
             bzero(bash_buffer, 10000);
             file_listing = read(PARENT_READ_FD, bash_buffer, sizeof(bash_buffer)-1);
-            printf("Read returned with %s\n", bash_buffer);
             if (file_listing >= 0) {
               send(newsockfd, bash_buffer,strlen(bash_buffer), 0);
-              printf("sending: %s", bash_buffer);
             }
         } else {
           // data is available on socket
           n = recv(newsockfd,sock_buffer,255, 0);
-          printf("finished reading\n");
-          if (n > 0) {
-            printf("received %s\n", sock_buffer);
-          } else {
+          if (n <=  0) {
             printf("failed to read");
+            exit(1);
           }
-          printf("starting to write: %s\n", sock_buffer);
           write(PARENT_WRITE_FD, sock_buffer, strlen(sock_buffer));
           if (n < 0) {
-            printf("failed to write :(");
+            printf("failed to write to socket");
           }
           memset(sock_buffer, 0, strlen(sock_buffer));
 
