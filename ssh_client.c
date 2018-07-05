@@ -88,14 +88,15 @@ int main(int argc, char *argv[]) {
   // sending bash commands to server.
   fd_set rfds;
   int retval;
-  char buffer[256];
-  char plainbuffer[256];
+  char cipherbuffer[1024];
+  char plainbuffer[1024];
   while (1) {
       FD_ZERO(&rfds);
       FD_SET(STDIN_FILENO, &rfds);
       FD_SET(fd, &rfds);
-      bzero(buffer, 256);
-      bzero(plainbuffer, 256);
+      bzero(cipherbuffer, 1024);
+      bzero(plainbuffer, 1024);
+
       retval = select(fd + 1, &rfds, NULL, NULL, NULL);
       if (retval == -1) {
         perror("error with select");
@@ -103,17 +104,29 @@ int main(int argc, char *argv[]) {
         if(FD_ISSET(fd, &rfds)) {
           // data available on socket
           int cipher_length;
+          int plaintext_length;
           read(fd, &cipher_length, 4);
-          n  = read(fd, buffer, cipher_length);
+          read(fd, &plaintext_length, 4);
+          n  = read(fd, cipherbuffer, cipher_length);
 
-          decrypt((unsigned char *)buffer, cipher_length, secret_key, iv, (unsigned char *) plainbuffer);
+
+          decrypt((unsigned char *)cipherbuffer, cipher_length, secret_key, iv, (unsigned char *) plainbuffer);
+
+          memset(&plainbuffer[plaintext_length], 0, 1024-plaintext_length);
 
           printf("%s", plainbuffer);
           fflush(stdout);
         } else {
           // data available on stdin
-          n = read(STDIN_FILENO, buffer, 255);
-          write(fd, buffer, 255);
+          int cipher_length;
+          int plaintext_length;
+          n = read(STDIN_FILENO, plainbuffer, 255);
+          cipher_length = encrypt_data( (unsigned char *)plainbuffer, strlen(plainbuffer), secret_key, iv, (unsigned char *)cipherbuffer);
+
+          plaintext_length = strlen(plainbuffer);
+          write(fd, &cipher_length,4);
+          write(fd, &plaintext_length,4);
+          write(fd, cipherbuffer, cipher_length);
         }
       }
   }

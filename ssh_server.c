@@ -122,7 +122,8 @@ int main(int argc, char *argv[]) {
     // Child proess
     run_bash_process();
   } else if (procId > 0) {
-    char bash_buffer[1024];
+    char plain_buffer[1024];
+    char cipher_buffer[1024];
     int bytes_read;
     /* close fds not required by parent */
     close(CHILD_READ_FD);
@@ -133,10 +134,13 @@ int main(int argc, char *argv[]) {
 
     highestFileDescriptor = PARENT_READ_FD > newsockfd ? PARENT_READ_FD : newsockfd;
 
+    int cipher_length;
     while (1) {
       FD_ZERO(&rfds);
       FD_SET(PARENT_READ_FD, &rfds);
       FD_SET(newsockfd, &rfds);
+      bzero(cipher_buffer, 1024);
+      bzero(plain_buffer, 1024);
 
       retval = select(highestFileDescriptor + 1, &rfds, NULL, NULL, NULL);
       if (retval == -1) {
@@ -144,30 +148,35 @@ int main(int argc, char *argv[]) {
       } else if (retval) {
         if(FD_ISSET(PARENT_READ_FD, &rfds)) {
             // data is available from bash
-            bzero(bash_buffer, 1024);
-            bzero(sock_buffer, 1024);
-            bytes_read = read(PARENT_READ_FD, bash_buffer, sizeof(bash_buffer)-1);
+            cipher_length = 0;
+            bytes_read = read(PARENT_READ_FD, plain_buffer, 1024);
             if (bytes_read >= 0) {
-              int cipher_length;
-              cipher_length = encrypt_data((unsigned char *)bash_buffer, strlen(bash_buffer), secret_key, iv, (unsigned char *)sock_buffer);
-              printf("cipher_length: %d\n", cipher_length);
+              cipher_length = encrypt_data((unsigned char *)plain_buffer, bytes_read, secret_key, iv, (unsigned char *)cipher_buffer);
+
+              int plaintext_length = strlen(plain_buffer);
 
               send(newsockfd, &cipher_length,4, 0);
-              send(newsockfd, sock_buffer, cipher_length, 0);
+              send(newsockfd, &plaintext_length,4, 0);
+              send(newsockfd, cipher_buffer, cipher_length, 0);
             }
         } else {
           // data is available on socket
-          n = recv(newsockfd,sock_buffer,255, 0);
+          int cipher_length;
+          int plaintext_length;
+          read(newsockfd, &cipher_length, 4);
+          read(newsockfd, &plaintext_length, 4);
+          n = read(newsockfd,cipher_buffer,cipher_length);
+
+          decrypt((unsigned char *)cipher_buffer, cipher_length, secret_key, iv, (unsigned char *) plain_buffer);
+          memset(&plain_buffer[plaintext_length], 0, 1024-plaintext_length);
           if (n <=  0) {
             printf("failed to read");
             exit(1);
           }
-          write(PARENT_WRITE_FD, sock_buffer, strlen(sock_buffer));
+          write(PARENT_WRITE_FD, plain_buffer, strlen(plain_buffer));
           if (n < 0) {
             printf("failed to write to socket");
           }
-          memset(sock_buffer, 0, strlen(sock_buffer));
-
         }
       }
     }
