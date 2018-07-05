@@ -5,6 +5,9 @@
 This is highly WIP library for a C program for executing
 commands on a remote computer.
 
+Note that the crypto that this uses is *not secure*, use
+at your own risk. 
+
 ### Install Dependencies
 
 #### MacOS
